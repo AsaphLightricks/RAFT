@@ -69,11 +69,8 @@ def compute_occlusions(flow):
     flow_backward = flow[..., -2:]
     flow = flow[..., :-2]
     assert flow.shape[-1] == 2 and flow_backward.shape[-1] == 2
-    h, w = flow.shape[:2]
-    x = np.linspace(0, 1, w, dtype=np.float32)
-    y = np.linspace(0, 1, h, dtype=np.float32)
-    coord = np.meshgrid(x, y, indexing='xy')
-    interp = coord + flow.transpose((2, 0, 1))
+    coord = np.indices(flow.shape[:2], dtype=np.float32)
+    interp = coord[::-1] + flow.transpose((2, 0, 1))
     warped = cv2.remap(
         flow_backward,
         interp[0],
@@ -132,12 +129,14 @@ if __name__ == '__main__':
     im_flow = flow_to_image(flow)
     im_rev_flow = flow_to_image(rev_flow)
 
+    t = 1
     mask = compute_occlusions(np.dstack([flow, rev_flow]))
+    threshed_mask = mask < t
     mask_normed = mask / mask.max()
     mask_normed = (mask_normed * 255).astype(np.uint8)
 
     l = np.vstack([im1, im_flow, np.dstack([mask_normed] * 3)])
-    r = np.vstack([im2, im_rev_flow, np.zeros_like(im_rev_flow)])
+    r = np.vstack([im2, im_rev_flow, np.dstack([(threshed_mask * 255).astype(np.uint8)] * 3)])
     plt.imshow(np.hstack([l, r]))
     plt.show()
 
